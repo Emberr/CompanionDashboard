@@ -165,10 +165,47 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, userData, setUserData }) => {
+  const today = new Date().toISOString().split('T')[0];
+  const todaysLog = userData.mealLogs.find(log => log.date === today);
+
+  const dailyTotals = todaysLog
+    ? [...todaysLog.breakfast, ...todaysLog.lunch, ...todaysLog.dinner, ...todaysLog.snack].reduce(
+        (totals, item) => {
+          totals.calories += item.nutrients.calories || 0;
+          totals.protein += item.nutrients.protein || 0;
+          totals.carbs += item.nutrients.carbs || 0;
+          totals.fat += item.nutrients.fat || 0;
+          totals.fiber += item.nutrients.fiber || 0;
+          return totals;
+        },
+        { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 }
+      )
+    : { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 };
+
+  const goals = userData.goals.dailyNutrients;
+  const calRatio = goals.calories ? dailyTotals.calories / goals.calories : 0;
+  const fatRatio = goals.fat ? dailyTotals.fat / goals.fat : 0;
+  const fiberRatio = goals.fiber ? dailyTotals.fiber / goals.fiber : 0;
+  const proRatio = goals.protein ? dailyTotals.protein / goals.protein : 0;
+  const carbRatio = goals.carbs ? dailyTotals.carbs / goals.carbs : 0;
+
+  let gradient = 'linear-gradient(to bottom right, var(--color-primary), var(--color-secondary))';
+  if (calRatio > 1.1 || fatRatio > 1.1) {
+    gradient = 'linear-gradient(to bottom right, #f44336, #ffeb3b)';
+  } else if (
+    fiberRatio >= 0.8 &&
+    calRatio <= 1 &&
+    fatRatio <= 1 &&
+    proRatio >= 0.8 &&
+    carbRatio >= 0.8
+  ) {
+    gradient = 'linear-gradient(to bottom right, #4caf50, #2196f3)';
+  }
+
   return (
     <div className="bg-surface p-2 md:p-4 h-full flex flex-col">
       <div className="flex items-center space-x-2 p-3 mb-4">
-        <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-full"></div>
+        <div className="w-8 h-8 rounded-full" style={{ background: gradient }}></div>
         <h1 className="text-xl font-bold hidden md:block text-on-surface">AuraFit AI</h1>
       </div>
       <nav className="flex-grow space-y-2">
