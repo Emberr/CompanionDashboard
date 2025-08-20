@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export function useLocalStorage<T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -10,7 +10,7 @@ export function useLocalStorage<T,>(key: string, initialValue: T): [T, React.Dis
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
-      console.error(error);
+      console.error('Error loading from localStorage:', error);
       return initialValue;
     }
   });
@@ -23,7 +23,7 @@ export function useLocalStorage<T,>(key: string, initialValue: T): [T, React.Dis
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
       }
     } catch (error) {
-      console.error(error);
+      console.error('Error saving to localStorage:', error);
     }
   };
 
@@ -33,7 +33,7 @@ export function useLocalStorage<T,>(key: string, initialValue: T): [T, React.Dis
             try {
                 setStoredValue(e.newValue ? JSON.parse(e.newValue) : initialValue);
             } catch (error) {
-                console.error(error);
+                console.error('Error handling storage change:', error);
                 setStoredValue(initialValue);
             }
         }

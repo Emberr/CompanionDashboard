@@ -70,7 +70,21 @@ const DataManager: React.FC<{
     setUserData: React.Dispatch<React.SetStateAction<UserData>>
 }> = ({ userData, setUserData }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const importRef = useRef<HTMLInputElement>(null);
+
+    const handleSaveNow = () => {
+        setSaveStatus('saving');
+        try {
+            // Force a re-save to localStorage by triggering the setter
+            setUserData(prev => ({ ...prev }));
+            setSaveStatus('saved');
+            setTimeout(() => setSaveStatus('idle'), 2000); // Reset status after 2 seconds
+        } catch (error) {
+            console.error('Failed to save data:', error);
+            setSaveStatus('idle');
+        }
+    };
 
     const handleExport = () => {
         const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
@@ -117,6 +131,15 @@ const DataManager: React.FC<{
             {isOpen && (
                 <div className="absolute bottom-full left-0 w-full p-2">
                     <div className="bg-bkg rounded-lg shadow-lg p-2 space-y-1">
+                        <button 
+                            onClick={handleSaveNow} 
+                            disabled={saveStatus === 'saving'}
+                            className="w-full text-left text-sm p-2 rounded hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+                        >
+                            <span>Save Now</span>
+                            {saveStatus === 'saving' && <span className="text-xs text-primary">Saving...</span>}
+                            {saveStatus === 'saved' && <span className="text-xs text-secondary">✓ Saved</span>}
+                        </button>
                         <button onClick={handleImportClick} className="w-full text-left text-sm p-2 rounded hover:bg-surface">Import Data</button>
                         <button onClick={handleExport} className="w-full text-left text-sm p-2 rounded hover:bg-surface">Export Data</button>
                         <input type="file" accept=".json" ref={importRef} onChange={handleImport} className="hidden" />

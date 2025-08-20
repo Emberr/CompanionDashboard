@@ -86,6 +86,7 @@ const Inventory: React.FC<InventoryProps> = ({ userData, setUserData }) => {
             category: activeTab,
             ...(activeTab === 'supplements' && newItemFrequency && { frequency: newItemFrequency as FoodItem['frequency'] })
         };
+        
         setUserData(prev => ({...prev, inventory: [...prev.inventory, newFood]}));
         
         // Fetch nutrients in the background

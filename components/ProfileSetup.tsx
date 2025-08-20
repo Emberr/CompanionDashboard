@@ -5,6 +5,30 @@ interface ProfileSetupProps {
   onComplete: (initialData: Partial<UserData>) => void;
 }
 
+const InputField: React.FC<{ 
+  name: string, 
+  label: string, 
+  value: string, 
+  type?: string, 
+  unit?: string,
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void 
+}> = ({ name, label, value, type='number', unit, onChange }) => (
+  <div>
+    <label htmlFor={name} className="block text-sm font-medium text-on-surface-muted">{label}</label>
+    <div className="mt-1 relative rounded-md shadow-sm">
+       <input 
+         type={type} 
+         name={name} 
+         id={name} 
+         value={value} 
+         onChange={onChange} 
+         className="bg-surface focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-600 rounded-md p-2" 
+       />
+       {unit && <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-gray-500 sm:text-sm">{unit}</span></div>}
+    </div>
+  </div>
+);
+
 const ProfileSetup: React.FC<ProfileSetupProps> = ({ onComplete }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -77,16 +101,6 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onComplete }) => {
     onComplete(initialData);
   };
   
-  const InputField: React.FC<{ name: string, label: string, value: string, type?: string, unit?: string}> = ({ name, label, value, type='number', unit}) => (
-      <div>
-        <label htmlFor={name} className="block text-sm font-medium text-on-surface-muted">{label}</label>
-        <div className="mt-1 relative rounded-md shadow-sm">
-           <input type={type} name={name} id={name} value={value} onChange={handleChange} className="bg-surface focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-600 rounded-md p-2" />
-           {unit && <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-gray-500 sm:text-sm">{unit}</span></div>}
-        </div>
-      </div>
-  );
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
       <div className="bg-bkg rounded-lg shadow-xl p-8 w-full max-w-md mx-4">
@@ -103,24 +117,24 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onComplete }) => {
                      <option value="female">Female</option>
                  </select>
             </div>
-            <InputField name="age" label="Age" value={formData.age} unit="years" />
-            <InputField name="height" label="Height" value={formData.height} unit="cm" />
+            <InputField name="age" label="Age" value={formData.age} unit="years" onChange={handleChange} />
+            <InputField name="height" label="Height" value={formData.height} unit="cm" onChange={handleChange} />
           </div>
         )}
         
         {step === 2 && (
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Your Current Stats</h3>
-             <InputField name="weight" label="Current Weight" value={formData.weight} unit="kg" />
-            <InputField name="bodyFat" label="Current Body Fat (optional)" value={formData.bodyFat} unit="%" />
+             <InputField name="weight" label="Current Weight" value={formData.weight} unit="kg" onChange={handleChange} />
+            <InputField name="bodyFat" label="Current Body Fat (optional)" value={formData.bodyFat} unit="%" onChange={handleChange} />
           </div>
         )}
         
         {step === 3 && (
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Your Goals</h3>
-            <InputField name="goalWeight" label="Goal Weight" value={formData.goalWeight} unit="kg" />
-            <InputField name="goalBodyFat" label="Goal Body Fat (optional)" value={formData.goalBodyFat} unit="%" />
+            <InputField name="goalWeight" label="Goal Weight" value={formData.goalWeight} unit="kg" onChange={handleChange} />
+            <InputField name="goalBodyFat" label="Goal Body Fat (optional)" value={formData.goalBodyFat} unit="%" onChange={handleChange} />
             <div>
                  <label htmlFor="activityLevel" className="block text-sm font-medium text-on-surface-muted">Weekly Activity Level</label>
                  <select name="activityLevel" value={formData.activityLevel} onChange={handleChange} className="mt-1 bg-surface focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-600 rounded-md p-2">

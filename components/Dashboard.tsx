@@ -157,7 +157,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ userData, setUserData, onAddFood }) => {
   const [insights, setInsights] = useState<string>('');
-  const [loadingInsights, setLoadingInsights] = useState<boolean>(true);
+  const [loadingInsights, setLoadingInsights] = useState<boolean>(false);
   const [weightInput, setWeightInput] = useState<string>('');
   const [bodyFatInput, setBodyFatInput] = useState<string>('');
 
@@ -260,8 +260,20 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setUserData, onAddFood 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card>
           <h2 className="text-2xl font-semibold mb-4">AI Insights</h2>
-          {loadingInsights ? <div className="flex justify-center"><Spinner /></div> : <p className="text-on-surface-muted whitespace-pre-wrap">{insights || "Click 'Refresh' to get new insights!"}</p>}
-           <button onClick={fetchInsights} className="mt-4 text-sm text-primary hover:underline" disabled={loadingInsights}>Refresh Insights</button>
+          {loadingInsights ? (
+            <div className="flex justify-center"><Spinner /></div>
+          ) : (
+            <p className="text-on-surface-muted whitespace-pre-wrap">
+              {insights || "No insights yet! Click 'Generate Insights' to get personalized recommendations based on your current progress."}
+            </p>
+          )}
+          <button 
+            onClick={fetchInsights} 
+            className="mt-4 bg-primary text-on-primary px-4 py-2 rounded hover:bg-primary-variant transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed" 
+            disabled={loadingInsights}
+          >
+            {loadingInsights ? 'Generating...' : (insights ? 'Refresh Insights' : 'Generate Insights')}
+          </button>
         </Card>
         
         <SupplementTracker
