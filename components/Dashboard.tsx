@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { UserData, Nutrients, BodyMetric, MealType, MealLogItem, MealLog } from '../types';
+import type { UserData, Nutrients, BodyMetric, MealType, MealLogItem, MealLog, FoodItem } from '../types';
 import { generateDashboardInsights, getNutrientsForMeal } from '../services/geminiService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -49,7 +49,7 @@ const ProgressCircle: React.FC<{
               style={{ strokeDasharray: circumference, strokeDashoffset: offset, transition: 'stroke-dashoffset 0.5s ease-out' }}
             />
           </svg>
-          <span className="absolute text-lg font-bold">{`${Math.round(progress)}%`}</span>
+          <span className="absolute text-lg font-bold text-on-surface top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">{`${Math.round(progress)}%`}</span>
       </div>
       <span className="mt-2 text-sm text-on-surface-muted">{label}</span>
     </div>
@@ -57,9 +57,9 @@ const ProgressCircle: React.FC<{
 };
 
 // --- Meal Logger Component ---
-const MealLogger: React.FC<{ 
-    mealLog: MealLog | undefined, 
-    onAddFood: (mealType: MealType, item: MealLogItem) => void 
+const MealLogger: React.FC<{
+    mealLog: MealLog | undefined,
+    onAddFood: (mealType: MealType, item: MealLogItem) => void
 }> = ({ mealLog, onAddFood }) => {
     const [activeMeal, setActiveMeal] = useState<MealType>('breakfast');
     const [foodInput, setFoodInput] = useState('');
@@ -82,7 +82,7 @@ const MealLogger: React.FC<{
     const currentMealItems = mealLog ? mealLog[activeMeal] : [];
 
     return (
-        <Card>
+        <Card className="h-full">
             <h2 className="text-2xl font-semibold mb-4">My Day</h2>
             <div className="border-b border-gray-700">
                 <nav className="-mb-px flex space-x-4">
@@ -107,7 +107,41 @@ const MealLogger: React.FC<{
                            <span className="text-on-surface-muted">{item.nutrients.calories.toFixed(0)} kcal</span>
                         </li>
                     ))}
+                     {currentMealItems.length === 0 && <p className="text-center text-on-surface-muted text-sm py-4">No foods logged for this meal yet.</p>}
                 </ul>
+            </div>
+        </Card>
+    );
+};
+
+// --- Supplement Tracker Component ---
+const SupplementTracker: React.FC<{
+    supplements: FoodItem[];
+    takenIds: string[];
+    onToggle: (id: string) => void;
+}> = ({ supplements, takenIds, onToggle }) => {
+    const supplementsToShow = supplements.filter(s => s.frequency);
+
+    return (
+        <Card>
+            <h2 className="text-2xl font-semibold mb-4">Supplements for Today</h2>
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                {supplementsToShow.length === 0 ? (
+                     <p className="text-center text-on-surface-muted text-sm py-4">No supplements with a daily frequency have been added to your inventory.</p>
+                ) : supplementsToShow.map(sup => (
+                    <label key={sup.id} className="flex items-center p-2 bg-bkg rounded-md cursor-pointer hover:bg-gray-800 transition-colors">
+                        <input
+                            type="checkbox"
+                            checked={takenIds.includes(sup.id)}
+                            onChange={() => onToggle(sup.id)}
+                            className="h-5 w-5 rounded bg-surface border-gray-600 text-primary focus:ring-primary"
+                        />
+                        <div className="ml-3">
+                            <span className={`text-on-surface ${takenIds.includes(sup.id) ? 'line-through text-on-surface-muted' : ''}`}>{sup.name}</span>
+                            <p className="text-xs text-on-surface-muted capitalize">{sup.frequency}</p>
+                        </div>
+                    </label>
+                ))}
             </div>
         </Card>
     );
@@ -118,16 +152,27 @@ const MealLogger: React.FC<{
 interface DashboardProps {
   userData: UserData;
   setUserData: React.Dispatch<React.SetStateAction<UserData>>;
+  onAddFood: (mealType: MealType, item: MealLogItem) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ userData, setUserData }) => {
+const Dashboard: React.FC<DashboardProps> = ({ userData, setUserData, onAddFood }) => {
   const [insights, setInsights] = useState<string>('');
-  const [loadingInsights, setLoadingInsights] = useState<boolean>(false);
+  const [loadingInsights, setLoadingInsights] = useState<boolean>(true);
   const [weightInput, setWeightInput] = useState<string>('');
   const [bodyFatInput, setBodyFatInput] = useState<string>('');
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  // Effect for daily resets
+  useEffect(() => {
+    if (userData.supplementsTaken?.date !== today) {
+        setUserData(prev => ({
+            ...prev,
+            supplementsTaken: { date: today, takenItemIds: [] }
+        }));
+    }
+  }, [today, userData.supplementsTaken?.date, setUserData]);
+  
   const todaysLog = userData.mealLogs.find(log => log.date === today);
 
   const dailyTotals = useMemo<Nutrients>(() => {
@@ -180,20 +225,16 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setUserData }) => {
       if (type === 'weight') setWeightInput('');
       else setBodyFatInput('');
   };
-
-  const handleAddFoodToLog = (mealType: MealType, item: MealLogItem) => {
-      setUserData(prev => {
-          const logs = [...prev.mealLogs];
-          let todaysLogIndex = logs.findIndex(log => log.date === today);
-          if (todaysLogIndex === -1) {
-              logs.push({ id: Date.now().toString(), date: today, breakfast: [], lunch: [], dinner: [], snack: [] });
-              todaysLogIndex = logs.length - 1;
-          }
-          const updatedLog = { ...logs[todaysLogIndex] };
-          updatedLog[mealType] = [...updatedLog[mealType], item];
-          logs[todaysLogIndex] = updatedLog;
-          return { ...prev, mealLogs: logs };
-      });
+  
+  const handleToggleSupplement = (id: string) => {
+    setUserData(prev => {
+        const taken = prev.supplementsTaken.takenItemIds;
+        const newTaken = taken.includes(id) ? taken.filter(tId => tId !== id) : [...taken, id];
+        return {
+            ...prev,
+            supplementsTaken: { ...prev.supplementsTaken, takenItemIds: newTaken }
+        };
+    });
   };
 
   const latestWeight = userData.weightHistory[userData.weightHistory.length - 1]?.value || 0;
@@ -204,26 +245,33 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setUserData }) => {
       <h1 className="text-4xl font-bold">Dashboard</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <MealLogger mealLog={todaysLog} onAddFood={handleAddFoodToLog} />
+        <MealLogger mealLog={todaysLog} onAddFood={onAddFood} />
         <Card>
             <h2 className="text-2xl font-semibold mb-4">Today's Progress</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <ProgressCircle progress={calProgress} size={100} strokeWidth={8} color="#bb86fc" label="Calories" />
-            <ProgressCircle progress={proProgress} size={100} strokeWidth={8} color="#03dac6" label="Protein" />
-            <ProgressCircle progress={carbProgress} size={100} strokeWidth={8} color="#cf6679" label="Carbs" />
-            <ProgressCircle progress={fatProgress} size={100} strokeWidth={8} color="#f2a600" label="Fats" />
+                <ProgressCircle progress={calProgress} size={100} strokeWidth={8} color="#bb86fc" label="Calories" />
+                <ProgressCircle progress={proProgress} size={100} strokeWidth={8} color="#03dac6" label="Protein" />
+                <ProgressCircle progress={carbProgress} size={100} strokeWidth={8} color="#cf6679" label="Carbs" />
+                <ProgressCircle progress={fatProgress} size={100} strokeWidth={8} color="#f2a600" label="Fats" />
             </div>
         </Card>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-1">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card>
           <h2 className="text-2xl font-semibold mb-4">AI Insights</h2>
-          {loadingInsights ? <Spinner /> : <p className="text-on-surface-muted whitespace-pre-wrap">{insights || "Click 'Refresh' to get new insights!"}</p>}
+          {loadingInsights ? <div className="flex justify-center"><Spinner /></div> : <p className="text-on-surface-muted whitespace-pre-wrap">{insights || "Click 'Refresh' to get new insights!"}</p>}
            <button onClick={fetchInsights} className="mt-4 text-sm text-primary hover:underline" disabled={loadingInsights}>Refresh Insights</button>
         </Card>
         
-        <Card className="lg:col-span-2">
+        <SupplementTracker
+            supplements={userData.inventory.filter(i => i.category === 'supplements')}
+            takenIds={userData.supplementsTaken?.takenItemIds || []}
+            onToggle={handleToggleSupplement}
+        />
+      </div>
+
+      <Card>
             <h2 className="text-2xl font-semibold mb-4">Stats & Goals</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -247,9 +295,8 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setUserData }) => {
                     <p>Body Fat Goal: <span className="font-bold text-primary">{userData.goals.bodyFat} %</span></p>
                  </div>
             </div>
-        </Card>
-      </div>
-
+      </Card>
+      
       <Card>
         <h2 className="text-2xl font-semibold mb-4">Progress Over Time</h2>
         <div className="h-80">
@@ -258,7 +305,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setUserData }) => {
               <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
               <XAxis dataKey="date" stroke="#a0a0a0" />
               <YAxis yAxisId="left" label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft', fill: '#03dac6' }} stroke="#03dac6" />
-              <YAxis yAxisId="right" orientation="right" label={{ value: 'Body Fat (%)', angle: -90, a: 'insideRight', fill: '#bb86fc' }} stroke="#bb86fc" />
+              <YAxis yAxisId="right" orientation="right" label={{ value: 'Body Fat (%)', angle: -90, position: 'insideRight', fill: '#bb86fc' }} stroke="#bb86fc" />
               <Tooltip
                 contentStyle={{ backgroundColor: '#1e1e1e', border: '1px solid #333' }}
                 labelStyle={{ color: '#fff' }}

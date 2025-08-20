@@ -1,6 +1,5 @@
-
-import React from 'react';
-import type { Page } from '../types';
+import React, { useState, useRef } from 'react';
+import type { Page, UserData } from '../types';
 
 interface IconProps {
   className?: string;
@@ -36,6 +35,13 @@ const DumbbellIcon = ({ className = 'w-6 h-6' }: IconProps) => (
     </svg>
 );
 
+const DataIcon = ({ className = 'w-6 h-6' }: IconProps) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8.08a2 2 0 0 0-1.67.9l-.81 1.2a2 2 0 0 1-1.69.9H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h17z" /><circle cx="12" cy="12" r="3" />
+    </svg>
+);
+
+
 const NavItem: React.FC<{
   label: string;
   icon: React.ReactNode;
@@ -59,22 +65,98 @@ const NavItem: React.FC<{
   );
 };
 
+const DataManager: React.FC<{
+    userData: UserData;
+    setUserData: React.Dispatch<React.SetStateAction<UserData>>
+}> = ({ userData, setUserData }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const importRef = useRef<HTMLInputElement>(null);
+
+    const handleExport = () => {
+        const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+            JSON.stringify(userData)
+        )}`;
+        const link = document.createElement("a");
+        link.href = jsonString;
+        link.download = `AuraFit-AI-Backup-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        setIsOpen(false);
+    };
+
+    const handleImportClick = () => {
+        importRef.current?.click();
+    };
+
+    const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const text = e.target?.result;
+                const importedData = JSON.parse(text as string);
+                // Basic validation
+                if (importedData.hasOwnProperty('isProfileComplete')) {
+                    setUserData(importedData);
+                    alert("Data imported successfully!");
+                } else {
+                    alert("Invalid data file.");
+                }
+            } catch (error) {
+                alert("Failed to parse the data file.");
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+        setIsOpen(false);
+    };
+
+    return (
+        <div className="relative">
+            {isOpen && (
+                <div className="absolute bottom-full left-0 w-full p-2">
+                    <div className="bg-bkg rounded-lg shadow-lg p-2 space-y-1">
+                        <button onClick={handleImportClick} className="w-full text-left text-sm p-2 rounded hover:bg-surface">Import Data</button>
+                        <button onClick={handleExport} className="w-full text-left text-sm p-2 rounded hover:bg-surface">Export Data</button>
+                        <input type="file" accept=".json" ref={importRef} onChange={handleImport} className="hidden" />
+                    </div>
+                </div>
+            )}
+             <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`flex items-center space-x-3 p-3 rounded-lg w-full text-left transition-all duration-200 text-on-surface-muted hover:bg-surface hover:text-on-surface`}
+            >
+                <DataIcon />
+                <span className="hidden md:block">Data</span>
+            </button>
+        </div>
+    );
+};
+
 interface SidebarProps {
   currentPage: Page;
   setPage: (page: Page) => void;
+  userData: UserData;
+  setUserData: React.Dispatch<React.SetStateAction<UserData>>;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, userData, setUserData }) => {
   return (
-    <div className="bg-surface p-2 md:p-4 flex flex-col space-y-2">
+    <div className="bg-surface p-2 md:p-4 h-full flex flex-col">
       <div className="flex items-center space-x-2 p-3 mb-4">
         <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-full"></div>
         <h1 className="text-xl font-bold hidden md:block text-on-surface">AuraFit AI</h1>
       </div>
-      <NavItem label="Dashboard" icon={<HomeIcon />} page="dashboard" currentPage={currentPage} setPage={setPage} />
-      <NavItem label="Inventory" icon={<RefrigeratorIcon />} page="inventory" currentPage={currentPage} setPage={setPage} />
-      <NavItem label="Recipes" icon={<ChefHatIcon />} page="recipes" currentPage={currentPage} setPage={setPage} />
-      <NavItem label="Workouts" icon={<DumbbellIcon />} page="workouts" currentPage={currentPage} setPage={setPage} />
+      <nav className="flex-grow space-y-2">
+        <NavItem label="Dashboard" icon={<HomeIcon />} page="dashboard" currentPage={currentPage} setPage={setPage} />
+        <NavItem label="Inventory" icon={<RefrigeratorIcon />} page="inventory" currentPage={currentPage} setPage={setPage} />
+        <NavItem label="Recipes" icon={<ChefHatIcon />} page="recipes" currentPage={currentPage} setPage={setPage} />
+        <NavItem label="Workouts" icon={<DumbbellIcon />} page="workouts" currentPage={currentPage} setPage={setPage} />
+      </nav>
+      <div className="mt-auto">
+         <DataManager userData={userData} setUserData={setUserData} />
+      </div>
     </div>
   );
 };

@@ -72,6 +72,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onComplete }) => {
           sodium: 2300, // Default
         },
       },
+      supplementsTaken: { date: today, takenItemIds: [] }
     };
     onComplete(initialData);
   };

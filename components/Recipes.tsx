@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import type { UserData, Recipe } from '../types';
+import type { UserData, Recipe, MealType, MealLogItem } from '../types';
 import { generateRecipes } from '../services/geminiService';
 
 // --- Reusable UI Components ---
@@ -21,7 +20,12 @@ const Spinner: React.FC = () => (
 );
 
 // --- Recipe Card Component ---
-const RecipeCard: React.FC<{ recipe: Recipe, onSave: (recipe: Recipe) => void }> = ({ recipe, onSave }) => {
+const RecipeCard: React.FC<{
+    recipe: Recipe,
+    onSave: (recipe: Recipe) => void,
+    onMadeIt: (recipe: Recipe) => void,
+    isSaved: boolean
+}> = ({ recipe, onSave, onMadeIt, isSaved }) => {
     return (
         <Card>
             <h3 className="text-2xl font-bold text-primary mb-2">{recipe.name}</h3>
@@ -53,10 +57,37 @@ const RecipeCard: React.FC<{ recipe: Recipe, onSave: (recipe: Recipe) => void }>
                     <p>Fat: {recipe.nutritionalInfo.fat?.toFixed(0)}g</p>
                 </div>
             </div>
-            <div className="mt-6 flex justify-end">
-                <Button onClick={() => onSave(recipe)}>Save Recipe</Button>
+            <div className="mt-6 flex justify-end gap-4">
+                <button onClick={() => onMadeIt(recipe)} className="bg-secondary text-on-primary px-4 py-2 rounded hover:opacity-80 transition-opacity font-semibold">I Made It!</button>
+                <Button onClick={() => onSave(recipe)} disabled={isSaved}>{isSaved ? 'Saved' : 'Save Recipe'}</Button>
             </div>
         </Card>
+    );
+};
+
+const AddToMealModal: React.FC<{
+    recipe: Recipe;
+    onAdd: (mealType: MealType) => void;
+    onClose: () => void;
+}> = ({ recipe, onAdd, onClose }) => {
+    const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-sm">
+                <h2 className="text-2xl font-bold mb-2">Log Recipe</h2>
+                <p className="text-on-surface-muted mb-4">Add "<span className="font-semibold text-on-surface">{recipe.name}</span>" to which meal?</p>
+                <div className="grid grid-cols-2 gap-3">
+                    {mealTypes.map(meal => (
+                        <button key={meal} onClick={() => onAdd(meal)} className="bg-primary text-on-primary capitalize w-full p-3 rounded-lg hover:bg-primary-variant transition-colors">
+                            {meal}
+                        </button>
+                    ))}
+                </div>
+                <div className="mt-6 flex justify-end">
+                     <button onClick={onClose} className="bg-surface text-on-surface px-4 py-2 rounded hover:bg-gray-700">Cancel</button>
+                </div>
+            </Card>
+        </div>
     );
 };
 
@@ -64,9 +95,10 @@ const RecipeCard: React.FC<{ recipe: Recipe, onSave: (recipe: Recipe) => void }>
 interface RecipesProps {
   userData: UserData;
   setUserData: React.Dispatch<React.SetStateAction<UserData>>;
+  onAddFood: (mealType: MealType, item: MealLogItem) => void;
 }
 
-const Recipes: React.FC<RecipesProps> = ({ userData, setUserData }) => {
+const Recipes: React.FC<RecipesProps> = ({ userData, setUserData, onAddFood }) => {
   const [preferences, setPreferences] = useState('');
   const [useInventory, setUseInventory] = useState(true);
   const [cheatMode, setCheatMode] = useState(false);
@@ -74,12 +106,13 @@ const Recipes: React.FC<RecipesProps> = ({ userData, setUserData }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'generate' | 'saved'>('generate');
+  const [mealLogRecipe, setMealLogRecipe] = useState<Recipe | null>(null);
 
   const handleGenerate = async () => {
     setIsLoading(true);
     setError('');
     setGeneratedRecipes([]);
-    const ingredients = useInventory ? userData.inventory.map(i => i.name) : [];
+    const ingredients = useInventory ? userData.inventory.filter(i => i.category === 'food').map(i => i.name) : [];
     try {
       const recipes = await generateRecipes(ingredients, preferences, cheatMode);
       setGeneratedRecipes(recipes);
@@ -92,14 +125,27 @@ const Recipes: React.FC<RecipesProps> = ({ userData, setUserData }) => {
   
   const handleSaveRecipe = (recipeToSave: Recipe) => {
       if (userData.savedRecipes.some(r => r.name === recipeToSave.name)) {
-          alert('Recipe already saved!');
           return;
       }
       setUserData(prev => ({...prev, savedRecipes: [...prev.savedRecipes, recipeToSave]}));
   };
   
+  const handleLogRecipeAsMeal = (mealType: MealType) => {
+      if (!mealLogRecipe) return;
+      const mealItem: MealLogItem = {
+          id: Date.now().toString(),
+          name: mealLogRecipe.name,
+          nutrients: mealLogRecipe.nutritionalInfo
+      };
+      onAddFood(mealType, mealItem);
+      setMealLogRecipe(null);
+  };
+
+  const isRecipeSaved = (recipeName: string) => userData.savedRecipes.some(r => r.name === recipeName);
+
   return (
     <div className="p-4 md:p-8 space-y-8">
+      {mealLogRecipe && <AddToMealModal recipe={mealLogRecipe} onAdd={handleLogRecipeAsMeal} onClose={() => setMealLogRecipe(null)} />}
       <h1 className="text-4xl font-bold">Recipes</h1>
 
       <div className="border-b border-gray-700">
@@ -141,7 +187,7 @@ const Recipes: React.FC<RecipesProps> = ({ userData, setUserData }) => {
         {isLoading && <div className="flex justify-center"><Spinner /></div>}
         {error && <p className="text-error text-center">{error}</p>}
         <div className="space-y-6">
-            {generatedRecipes.map((recipe, index) => <RecipeCard key={index} recipe={recipe} onSave={handleSaveRecipe} />)}
+            {generatedRecipes.map((recipe, index) => <RecipeCard key={index} recipe={recipe} onSave={handleSaveRecipe} onMadeIt={setMealLogRecipe} isSaved={isRecipeSaved(recipe.name)} />)}
         </div>
         </>
       )}
@@ -151,7 +197,7 @@ const Recipes: React.FC<RecipesProps> = ({ userData, setUserData }) => {
               {userData.savedRecipes.length === 0 ? (
                   <Card><p className="text-center text-on-surface-muted">You haven't saved any recipes yet.</p></Card>
               ) : (
-                  userData.savedRecipes.map((recipe, index) => <RecipeCard key={index} recipe={recipe} onSave={handleSaveRecipe} />)
+                  userData.savedRecipes.map((recipe, index) => <RecipeCard key={index} recipe={recipe} onSave={handleSaveRecipe} onMadeIt={setMealLogRecipe} isSaved={true} />)
               )}
           </div>
       )}

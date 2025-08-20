@@ -11,8 +11,9 @@ export interface FoodItem {
   id: string;
   name: string;
   quantity: string;
-  category: 'fridge' | 'pantry' | 'supplements' | 'bar';
+  category: 'food' | 'supplements' | 'bar';
   nutrients?: Nutrients;
+  frequency?: 'morning' | 'meal' | 'night';
 }
 
 export interface Equipment {
@@ -81,6 +82,10 @@ export interface UserData {
   savedRecipes: Recipe[];
   savedWorkouts: Workout[];
   mealLogs: MealLog[];
+  supplementsTaken: {
+      date: string; // YYYY-MM-DD
+      takenItemIds: string[];
+  }
 }
 
 export type Page = 'dashboard' | 'inventory' | 'recipes' | 'workouts';

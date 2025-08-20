@@ -14,8 +14,8 @@ const Spinner: React.FC = () => (
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
 );
 
-type Category = 'fridge' | 'pantry' | 'supplements' | 'bar';
-type ActiveTab = Category | 'gym' | 'utensil';
+type FoodCategory = 'food' | 'supplements' | 'bar';
+type ActiveTab = FoodCategory | 'gym' | 'utensil';
 
 // --- Receipt Scanner Component ---
 const ReceiptScanner: React.FC<{onItemsScanned: (items: {name: string, quantity: string}[]) => void}> = ({ onItemsScanned }) => {
@@ -65,9 +65,10 @@ interface InventoryProps {
 }
 
 const Inventory: React.FC<InventoryProps> = ({ userData, setUserData }) => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('fridge');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('food');
   const [newItemName, setNewItemName] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState('');
+  const [newItemFrequency, setNewItemFrequency] = useState<'morning' | 'meal' | 'night' | ''>('');
   const [scannedItems, setScannedItems] = useState<{name: string, quantity: string}[] | null>(null);
 
   const handleAddItem = async () => {
@@ -78,7 +79,13 @@ const Inventory: React.FC<InventoryProps> = ({ userData, setUserData }) => {
         setUserData(prev => ({...prev, equipment: [...prev.equipment, newEquip]}));
     } else {
         const newItemId = Date.now().toString();
-        const newFood: FoodItem = { id: newItemId, name: newItemName, quantity: newItemQuantity, category: activeTab };
+        const newFood: FoodItem = {
+            id: newItemId,
+            name: newItemName,
+            quantity: newItemQuantity,
+            category: activeTab,
+            ...(activeTab === 'supplements' && newItemFrequency && { frequency: newItemFrequency as FoodItem['frequency'] })
+        };
         setUserData(prev => ({...prev, inventory: [...prev.inventory, newFood]}));
         
         // Fetch nutrients in the background
@@ -92,6 +99,7 @@ const Inventory: React.FC<InventoryProps> = ({ userData, setUserData }) => {
     }
     setNewItemName('');
     setNewItemQuantity('');
+    setNewItemFrequency('');
   };
 
   const handleDeleteItem = (id: string) => {
@@ -108,13 +116,13 @@ const Inventory: React.FC<InventoryProps> = ({ userData, setUserData }) => {
         id: `${Date.now()}-${item.name}`,
         name: item.name,
         quantity: item.quantity,
-        category: 'pantry', // Default to pantry
+        category: 'food',
     }));
     setUserData(prev => ({...prev, inventory: [...prev.inventory, ...newFoodItems]}));
     setScannedItems(null);
   };
 
-  const tabs: ActiveTab[] = ['fridge', 'pantry', 'supplements', 'bar', 'gym', 'utensil'];
+  const tabs: ActiveTab[] = ['food', 'supplements', 'bar', 'gym', 'utensil'];
   const currentItems: (FoodItem | Equipment)[] = (activeTab === 'gym' || activeTab === 'utensil')
     ? userData.equipment.filter(item => item.category === activeTab)
     : userData.inventory.filter(item => item.category === activeTab);
@@ -125,7 +133,7 @@ const Inventory: React.FC<InventoryProps> = ({ userData, setUserData }) => {
             <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
                 <Card className="w-full max-w-lg">
                     <h2 className="text-2xl font-bold mb-4">Confirm Scanned Items</h2>
-                    <p className="text-sm text-on-surface-muted mb-4">Review the items found on your receipt. Items will be added to your pantry.</p>
+                    <p className="text-sm text-on-surface-muted mb-4">Review the items found on your receipt. Items will be added to your 'Food' inventory.</p>
                     <ul className="space-y-2 max-h-80 overflow-y-auto mb-6 bg-bkg p-3 rounded-lg">
                         {scannedItems.map((item, index) => <li key={index} className="flex justify-between"><span className="font-medium">{item.name}</span> <span className="text-on-surface-muted">{item.quantity}</span></li>)}
                     </ul>
@@ -154,7 +162,7 @@ const Inventory: React.FC<InventoryProps> = ({ userData, setUserData }) => {
                     : 'border-transparent text-on-surface-muted hover:text-on-surface hover:border-gray-500'
                 }`}
               >
-                {tab === 'gym' ? 'Gym Equipment' : tab}
+                {tab === 'gym' ? 'Gym Equipment' : (tab === 'utensil' ? 'Utensils' : tab)}
               </button>
             ))}
           </nav>
@@ -178,6 +186,14 @@ const Inventory: React.FC<InventoryProps> = ({ userData, setUserData }) => {
                 className="bg-bkg border border-surface rounded px-3 py-2 sm:w-48"
               />
             )}
+             {activeTab === 'supplements' && (
+                <select value={newItemFrequency} onChange={e => setNewItemFrequency(e.target.value as any)} className="bg-bkg border border-surface rounded px-3 py-2 sm:w-48 text-on-surface-muted">
+                    <option value="">No Frequency</option>
+                    <option value="morning">Morning</option>
+                    <option value="meal">With a Meal</option>
+                    <option value="night">Night</option>
+                </select>
+            )}
             <button
               onClick={handleAddItem}
               className="bg-primary text-on-primary px-4 py-2 rounded hover:bg-primary-variant transition-colors font-semibold"
@@ -195,6 +211,7 @@ const Inventory: React.FC<InventoryProps> = ({ userData, setUserData }) => {
                   <div>
                     <span className="font-medium">{item.name}</span>
                     {'quantity' in item && <span className="text-sm text-on-surface-muted ml-3">{item.quantity}</span>}
+                    {'frequency' in item && item.frequency && <p className="text-xs text-secondary capitalize mt-1">{item.frequency}</p>}
                     {'nutrients' in item && item.nutrients && <p className="text-xs text-secondary mt-1">{item.nutrients.calories.toFixed(0)} kcal, {item.nutrients.protein.toFixed(0)}g P</p>}
                   </div>
                   <button onClick={() => handleDeleteItem(item.id)} className="text-error hover:text-red-400">
