@@ -16,12 +16,15 @@ const Spinner: React.FC<{ size?: string }> = ({ size = 'h-8 w-8' }) => (
 
 // --- Progress Circle Component ---
 const ProgressCircle: React.FC<{
-  progress: number;
+  current: number;
+  goal: number;
   size: number;
   strokeWidth: number;
   color: string;
   label: string;
-}> = ({ progress, size, strokeWidth, color, label }) => {
+  unit?: string;
+}> = ({ current, goal, size, strokeWidth, color, label, unit = '' }) => {
+  const progress = goal > 0 ? (current / goal) * 100 : 0;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (progress / 100) * circumference;
@@ -29,27 +32,29 @@ const ProgressCircle: React.FC<{
   return (
     <div className="flex flex-col items-center justify-center">
       <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-          <svg width={size} height={size} className="-rotate-90">
-            <circle
-              stroke="#333"
-              fill="transparent"
-              strokeWidth={strokeWidth}
-              r={radius}
-              cx={size / 2}
-              cy={size / 2}
-            />
-            <circle
-              stroke={color}
-              fill="transparent"
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-              r={radius}
-              cx={size / 2}
-              cy={size / 2}
-              style={{ strokeDasharray: circumference, strokeDashoffset: offset, transition: 'stroke-dashoffset 0.5s ease-out' }}
-            />
-          </svg>
-          <span className="absolute text-lg font-bold text-on-surface top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">{`${Math.round(progress)}%`}</span>
+        <svg width={size} height={size} className="-rotate-90">
+          <circle
+            stroke="#333"
+            fill="transparent"
+            strokeWidth={strokeWidth}
+            r={radius}
+            cx={size / 2}
+            cy={size / 2}
+          />
+          <circle
+            stroke={color}
+            fill="transparent"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            r={radius}
+            cx={size / 2}
+            cy={size / 2}
+            style={{ strokeDasharray: circumference, strokeDashoffset: offset, transition: 'stroke-dashoffset 0.5s ease-out' }}
+          />
+        </svg>
+        <span className="absolute text-xs font-bold text-on-surface text-center top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+          {`${Math.round(current)}${unit} / ${Math.round(goal)}${unit}`}
+        </span>
       </div>
       <span className="mt-2 text-sm text-on-surface-muted">{label}</span>
     </div>
@@ -190,12 +195,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setUserData, onAddFood 
     }, { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 });
   }, [todaysLog]);
 
-  const getProgress = (current: number, goal: number) => (goal > 0 ? (current / goal) * 100 : 0);
-
-  const calProgress = getProgress(dailyTotals.calories, userData.goals.dailyNutrients.calories);
-  const proProgress = getProgress(dailyTotals.protein, userData.goals.dailyNutrients.protein);
-  const carbProgress = getProgress(dailyTotals.carbs, userData.goals.dailyNutrients.carbs);
-  const fatProgress = getProgress(dailyTotals.fat, userData.goals.dailyNutrients.fat);
+  const goals = userData.goals.dailyNutrients;
   
   const fetchInsights = async () => {
     setLoadingInsights(true);
@@ -248,11 +248,12 @@ const Dashboard: React.FC<DashboardProps> = ({ userData, setUserData, onAddFood 
         <MealLogger mealLog={todaysLog} onAddFood={onAddFood} />
         <Card>
             <h2 className="text-2xl font-semibold mb-4">Today's Progress</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-                <ProgressCircle progress={calProgress} size={100} strokeWidth={8} color="#bb86fc" label="Calories" />
-                <ProgressCircle progress={proProgress} size={100} strokeWidth={8} color="#03dac6" label="Protein" />
-                <ProgressCircle progress={carbProgress} size={100} strokeWidth={8} color="#cf6679" label="Carbs" />
-                <ProgressCircle progress={fatProgress} size={100} strokeWidth={8} color="#f2a600" label="Fats" />
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
+                <ProgressCircle current={dailyTotals.calories} goal={goals.calories} unit="kcal" size={100} strokeWidth={8} color="#bb86fc" label="Calories" />
+                <ProgressCircle current={dailyTotals.protein} goal={goals.protein} unit="g" size={100} strokeWidth={8} color="#03dac6" label="Protein" />
+                <ProgressCircle current={dailyTotals.carbs} goal={goals.carbs} unit="g" size={100} strokeWidth={8} color="#cf6679" label="Carbs" />
+                <ProgressCircle current={dailyTotals.fat} goal={goals.fat} unit="g" size={100} strokeWidth={8} color="#f2a600" label="Fats" />
+                <ProgressCircle current={dailyTotals.fiber} goal={goals.fiber} unit="g" size={100} strokeWidth={8} color="#4caf50" label="Fiber" />
             </div>
         </Card>
       </div>
