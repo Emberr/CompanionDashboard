@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import type { UserData, Page } from './types';
@@ -14,6 +13,10 @@ const App: React.FC = () => {
   
   const initialUserData: UserData = {
     isProfileComplete: false,
+    gender: 'male',
+    age: 30,
+    height: 180,
+    activityLevel: 'moderate',
     goals: {
         weight: 0,
         bodyFat: 0,

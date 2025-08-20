@@ -1,5 +1,7 @@
 {
   "name": "AuraFit AI",
   "description": "Your AI-powered wellness companion for tracking nutrition, generating workouts, and achieving your body goals. It helps you manage your pantry, create shopping lists, log meals, and visualize your progress with insightful charts and AI-driven predictions.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

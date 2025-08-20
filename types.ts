@@ -1,4 +1,3 @@
-
 export interface Nutrients {
   calories: number;
   protein: number;
@@ -13,11 +12,13 @@ export interface FoodItem {
   name: string;
   quantity: string;
   category: 'fridge' | 'pantry' | 'supplements' | 'bar';
+  nutrients?: Nutrients;
 }
 
 export interface Equipment {
   id: string;
   name: string;
+  category: 'gym' | 'utensil';
 }
 
 export interface Recipe {
@@ -43,6 +44,7 @@ export interface Workout {
 }
 
 export interface MealLogItem {
+  id: string;
   name: string;
   nutrients: Nutrients;
 }
@@ -50,8 +52,10 @@ export interface MealLogItem {
 export interface MealLog {
   id: string;
   date: string; // YYYY-MM-DD
-  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  items: MealLogItem[];
+  breakfast: MealLogItem[];
+  lunch: MealLogItem[];
+  dinner: MealLogItem[];
+  snack: MealLogItem[];
 }
 
 export interface BodyMetric {
@@ -61,6 +65,10 @@ export interface BodyMetric {
 
 export interface UserData {
   isProfileComplete: boolean;
+  gender?: 'male' | 'female';
+  age?: number;
+  height?: number; // in cm
+  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
   goals: {
     weight: number;
     bodyFat: number;
@@ -76,3 +84,4 @@ export interface UserData {
 }
 
 export type Page = 'dashboard' | 'inventory' | 'recipes' | 'workouts';
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';

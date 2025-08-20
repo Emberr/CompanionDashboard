@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import type { UserData, Workout } from '../types';
 import { generateWorkout } from '../services/geminiService';
@@ -21,7 +20,11 @@ const Spinner: React.FC = () => (
 );
 
 // --- Workout Card Component ---
-const WorkoutCard: React.FC<{ workout: Workout, onSave: (workout: Workout) => void }> = ({ workout, onSave }) => {
+const WorkoutCard: React.FC<{ 
+    workout: Workout, 
+    onSave?: (workout: Workout) => void,
+    onDelete?: (workoutName: string) => void,
+}> = ({ workout, onSave, onDelete }) => {
     return (
         <Card>
             <h3 className="text-2xl font-bold text-primary mb-4">{workout.name}</h3>
@@ -37,8 +40,13 @@ const WorkoutCard: React.FC<{ workout: Workout, onSave: (workout: Workout) => vo
                     </div>
                 ))}
             </div>
-            <div className="mt-6 flex justify-end">
-                <Button onClick={() => onSave(workout)}>Save Workout</Button>
+            <div className="mt-6 flex justify-end gap-2">
+                {onSave && <Button onClick={() => onSave(workout)}>Save Workout</Button>}
+                {onDelete && (
+                    <button onClick={() => onDelete(workout.name)} className="bg-error text-on-primary p-2 rounded hover:opacity-80 transition-opacity">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                )}
             </div>
         </Card>
     )
@@ -73,7 +81,7 @@ const Workouts: React.FC<WorkoutsProps> = ({ userData, setUserData }) => {
     setIsLoading(true);
     setError('');
     setGeneratedWorkout(null);
-    const equipment = location === 'home' ? userData.equipment.map(e => e.name) : [];
+    const equipment = location === 'home' ? userData.equipment.filter(e => e.category === 'gym').map(e => e.name) : [];
 
     try {
         const workout = await generateWorkout(location, equipment, focus, duration, intensity);
@@ -91,6 +99,13 @@ const Workouts: React.FC<WorkoutsProps> = ({ userData, setUserData }) => {
           return;
       }
       setUserData(prev => ({...prev, savedWorkouts: [...prev.savedWorkouts, workoutToSave]}));
+  };
+
+  const handleDeleteWorkout = (workoutName: string) => {
+      setUserData(prev => ({
+          ...prev,
+          savedWorkouts: prev.savedWorkouts.filter(w => w.name !== workoutName)
+      }));
   };
 
   return (
@@ -154,7 +169,7 @@ const Workouts: React.FC<WorkoutsProps> = ({ userData, setUserData }) => {
                {userData.savedWorkouts.length === 0 ? (
                   <Card><p className="text-center text-on-surface-muted">You haven't saved any workouts yet.</p></Card>
               ) : (
-                  userData.savedWorkouts.map((workout, index) => <WorkoutCard key={index} workout={workout} onSave={handleSaveWorkout}/>)
+                  userData.savedWorkouts.map((workout, index) => <WorkoutCard key={index} workout={workout} onDelete={handleDeleteWorkout}/>)
               )}
           </div>
       )}
