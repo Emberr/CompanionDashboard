@@ -1,7 +1,7 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import type { Recipe, Workout, Nutrients, MealLogItem } from '../types';
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = (import.meta as any)?.env?.API_KEY || (import.meta as any)?.env?.GEMINI_API_KEY || (import.meta as any)?.env?.VITE_GEMINI_API_KEY || (process as any)?.env?.API_KEY || (process as any)?.env?.GEMINI_API_KEY || (process as any)?.env?.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
   // A simple alert for demonstration. In a real app, this would be handled more gracefully.
@@ -218,4 +218,86 @@ export const parseReceipt = async (base64Image: string): Promise<{name: string, 
         },
     });
     return parseJsonResponse<{name: string, quantity: string}[]>(response.text, []);
+};
+
+// Parse a natural-language description (e.g., from voice) into inventory items
+export const parseItemsFromText = async (text: string): Promise<{ name: string, quantity: string }[]> => {
+    const prompt = `
+You are an expert grocery inventory parser.
+From the following user description, extract grocery items to add to an inventory.
+Return ONLY a JSON array of objects with keys 'name' and 'quantity'.
+If quantity is not specified, default to '1 unit'.
+
+User description:
+"""
+${text}
+"""
+`;
+
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+                type: Type.ARRAY,
+                items: receiptItemSchema,
+            },
+        },
+    });
+
+    return parseJsonResponse<{ name: string, quantity: string }[]>(response.text, []);
+};
+
+// New function: Aggregate nutritional estimation for receipt items
+// This function takes an array of receipt items (with name and quantity) and returns an array of objects with name, quantity, and estimated nutrients.
+export const getMacrosForReceiptItems = async (items: { name: string, quantity: string }[]): Promise<{ name: string, quantity: string, nutrients: Nutrients }[]> => {
+    // Construct prompt with list of items
+    const prompt = `
+You are a nutritional database. For the following list of grocery items extracted from a receipt:
+${JSON.stringify(items)}
+
+Provide a JSON array where each object corresponds to an item, and includes:
+- name: a short descriptive name for the item
+- quantity: same as provided
+- nutrients: an object with estimated nutritional information (calories, protein, carbs, fat, fiber, sodium)
+
+Your response MUST be a valid JSON array matching the provided schema.
+`;
+
+    // Define aggregated schema for the response
+    const aggregatedResultSchema = {
+        type: Type.ARRAY,
+        items: {
+            type: Type.OBJECT,
+            properties: {
+                name: { type: Type.STRING },
+                quantity: { type: Type.STRING },
+                nutrients: {
+                    type: Type.OBJECT,
+                    properties: {
+                        calories: { type: Type.NUMBER },
+                        protein: { type: Type.NUMBER },
+                        carbs: { type: Type.NUMBER },
+                        fat: { type: Type.NUMBER },
+                        fiber: { type: Type.NUMBER },
+                        sodium: { type: Type.NUMBER }
+                    },
+                    required: ["calories", "protein", "carbs", "fat"]
+                }
+            },
+            required: ["name", "quantity", "nutrients"]
+        }
+    };
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            responseMimeType: 'application/json',
+            responseSchema: aggregatedResultSchema
+        }
+    });
+
+    return parseJsonResponse(response.text, []);
 };

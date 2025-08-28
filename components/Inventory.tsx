@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import type { UserData, FoodItem, Equipment } from '../types';
-import { parseReceipt, getNutrientsForFoodItem } from '../services/geminiService';
+import { parseReceipt, getNutrientsForFoodItem, parseItemsFromText } from '../services/geminiService';
+import { transcribeAudio } from '../services/openaiService';
 
 
 // --- Reusable UI Components ---
@@ -20,7 +21,12 @@ type ActiveTab = FoodCategory | 'gym' | 'utensil';
 // --- Receipt Scanner Component ---
 const ReceiptScanner: React.FC<{onItemsScanned: (items: {name: string, quantity: string}[]) => void}> = ({ onItemsScanned }) => {
     const [isLoading, setIsLoading] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const mediaStreamRef = useRef<MediaStream | null>(null);
+    const chunksRef = useRef<BlobPart[]>([]);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -45,17 +51,75 @@ const ReceiptScanner: React.FC<{onItemsScanned: (items: {name: string, quantity:
         reader.readAsDataURL(file);
     };
 
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaStreamRef.current = stream;
+            const mr = new MediaRecorder(stream);
+            chunksRef.current = [];
+            mr.ondataavailable = (e: any) => {
+                if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+            };
+            mr.onstop = async () => {
+                try {
+                    setIsTranscribing(true);
+                    const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+                    const text = await transcribeAudio(blob);
+                    if (text && text.trim().length > 0) {
+                        const items = await parseItemsFromText(text.trim());
+                        if (items && items.length) {
+                            onItemsScanned(items);
+                        } else {
+                            alert('Could not extract items from speech.');
+                        }
+                    } else {
+                        alert('No speech detected.');
+                    }
+                } catch (err) {
+                    console.error('Transcription failed:', err);
+                    alert('Voice transcription failed. Please try again.');
+                } finally {
+                    setIsTranscribing(false);
+                    // cleanup stream
+                    mediaStreamRef.current?.getTracks().forEach(t => t.stop());
+                    mediaStreamRef.current = null;
+                }
+            };
+            mediaRecorderRef.current = mr;
+            mr.start();
+            setIsRecording(true);
+        } catch (err) {
+            console.error('Mic access failed:', err);
+            alert('Could not access microphone.');
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
     return (
-        <>
+        <div className="flex items-center gap-2">
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
             <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
+                disabled={isLoading || isRecording || isTranscribing}
                 className="bg-secondary text-on-primary px-4 py-2 rounded hover:opacity-80 transition-opacity font-semibold flex items-center gap-2"
             >
                 {isLoading ? 'Scanning...' : 'Scan Receipt'}
             </button>
-        </>
+            <button
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isLoading || isTranscribing}
+                className={`px-4 py-2 rounded font-semibold flex items-center gap-2 transition-opacity ${isRecording ? 'bg-error text-on-primary' : 'bg-primary text-on-primary hover:opacity-80'}`}
+                title="Speak to add items"
+            >
+                {isTranscribing ? 'Transcribing…' : isRecording ? 'Stop Recording' : 'Speak to Add'}
+            </button>
+        </div>
     );
 };
 
