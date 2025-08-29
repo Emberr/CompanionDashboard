@@ -18,11 +18,18 @@ const Login: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
     setLoading(true);
     setError(null);
     try {
-      const ok = mode === 'login'
+      const result = mode === 'login'
         ? await login(username, password)
         : await signup(username, password);
-      if (ok) onSuccess();
-      else setError('Invalid credentials');
+      if (result.ok) {
+        onSuccess();
+      } else {
+        // If server reports no account configured, switch to signup mode automatically
+        if (result.status === 409 && mode === 'login') {
+          setMode('signup');
+        }
+        setError(result.error || (mode === 'login' ? 'Invalid credentials' : 'Signup failed'));
+      }
     } catch (e) {
       setError(mode === 'login' ? 'Login failed' : 'Signup failed');
     } finally {
@@ -48,13 +55,13 @@ const Login: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
         {error && <div className="text-red-500 text-sm">{error}</div>}
         <div>
           <label className="block text-sm mb-1">Username</label>
-          <input className="w-full p-2 rounded bg-bkg border border-surface" value={username} onChange={e => setUsername(e.target.value)} />
+          <input className="w-full p-2 rounded bg-bkg border border-surface" value={username} onChange={e => setUsername(e.target.value)} required />
         </div>
         <div>
           <label className="block text-sm mb-1">Password</label>
-          <input type="password" className="w-full p-2 rounded bg-bkg border border-surface" value={password} onChange={e => setPassword(e.target.value)} />
+          <input type="password" className="w-full p-2 rounded bg-bkg border border-surface" value={password} onChange={e => setPassword(e.target.value)} required />
         </div>
-        <button disabled={loading} className="w-full p-2 rounded bg-primary text-on-primary disabled:opacity-50">
+        <button disabled={loading || !username || !password} className="w-full p-2 rounded bg-primary text-on-primary disabled:opacity-50">
           {loading ? (mode === 'login' ? 'Signing in…' : 'Creating…') : (mode === 'login' ? 'Sign in' : 'Create account')}
         </button>
       </form>

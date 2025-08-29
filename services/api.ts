@@ -1,11 +1,15 @@
-export async function login(username: string, password: string): Promise<boolean> {
+export async function login(username: string, password: string): Promise<{ ok: boolean; status: number; error?: string }> {
   const res = await fetch('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
     credentials: 'include',
   });
-  return res.ok;
+  if (res.ok) return { ok: true, status: res.status };
+  let msg = '';
+  try { const j = await res.json(); msg = j?.error || ''; } catch {}
+  if (!msg) { try { msg = await res.text(); } catch {} }
+  return { ok: false, status: res.status, error: msg || res.statusText };
 }
 
 export async function logout(): Promise<void> {
@@ -35,12 +39,16 @@ export async function getAuthConfig(): Promise<{ signupAllowed: boolean }> {
   return res.json();
 }
 
-export async function signup(username: string, password: string): Promise<boolean> {
+export async function signup(username: string, password: string): Promise<{ ok: boolean; status: number; error?: string }> {
   const res = await fetch('/api/auth/signup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
     credentials: 'include',
   });
-  return res.ok;
+  if (res.ok) return { ok: true, status: res.status };
+  let msg = '';
+  try { const j = await res.json(); msg = j?.error || ''; } catch {}
+  if (!msg) { try { msg = await res.text(); } catch {} }
+  return { ok: false, status: res.status, error: msg || res.statusText };
 }

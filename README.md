@@ -44,12 +44,18 @@ Do this once:
   ./scripts/setup-auth.sh admin 'your-password'
   ```
 
-Build and run both services:
+Build and run both services (one script):
 ```bash
-./scripts/deploy.sh        # now uses docker compose by default
-# or
-./scripts/compose-update.sh
+./scripts/manage.sh deploy
 ```
+
+Common tasks (single entrypoint):
+- First-time auth setup: `./scripts/manage.sh setup-auth admin 'your-pass'`
+- Redeploy from scratch: `./scripts/manage.sh redeploy`
+- Status: `./scripts/manage.sh status`
+- Logs: `./scripts/manage.sh logs` (or `logs app`, `logs api`)
+- Diagnostics: `./scripts/manage.sh doctor` (checks API health and auth state)
+- Stop/remove containers: `./scripts/manage.sh down` (add `--purge` to remove volume)
 
 Visit <http://localhost:5050>.
 
@@ -69,9 +75,9 @@ What you get
 - Nginx proxies `/api/*` to the API container
 
 Configure
-1) Fast path: run `./scripts/setup-auth.sh <user> <password>` to generate `.env` with bcrypt hash and JWT secret.
+1) Fast path: run `./scripts/manage.sh setup-auth <user> <password>` to generate `.env` with bcrypt hash and JWT secret.
    - Manual path: generate hash and write `.env` yourself (examples in script output).
-2) Build and run with Compose: `docker compose up -d --build`
+2) Build and run with Compose: `./scripts/manage.sh deploy`
 
 How it works in the app
 - On load, the app requests `/api/data`. If unauthorized, it shows the login screen.

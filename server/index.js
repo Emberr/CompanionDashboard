@@ -62,6 +62,19 @@ function signupAllowed() {
   return loadCreds() === null;
 }
 
+function debugCredState() {
+  const creds = loadCreds();
+  return {
+    signupAllowed: creds === null,
+    source: creds?.source || null,
+    hasCredFile: fs.existsSync(credFile),
+    hasEnvHash: !!AUTH_PASSWORD_HASH_ENV,
+    cookieSecure: COOKIE_SECURE,
+  };
+}
+
+console.log('[API] Credential state at startup:', debugCredState());
+
 // Routes
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
@@ -71,8 +84,14 @@ app.get('/api/auth/config', (_req, res) => {
   res.json({ signupAllowed: signupAllowed() });
 });
 
+// Debug endpoint (no secrets) for troubleshooting
+app.get('/api/auth/debug', (_req, res) => {
+  res.json(debugCredState());
+});
+
 app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body || {};
+  console.log('[API] Login attempt:', { hasBody: !!req.body, u: typeof username, pLen: (password||'').length });
   if (!username || !password) {
     return res.status(400).json({ error: 'Missing credentials' });
   }
@@ -102,6 +121,7 @@ app.post('/api/auth/signup', async (req, res) => {
     return res.status(409).json({ error: 'Signup disabled; account already exists or env credentials set.' });
   }
   const { username, password } = req.body || {};
+  console.log('[API] Signup attempt:', { hasBody: !!req.body, u: typeof username, pLen: (password||'').length });
   if (!username || !password) return res.status(400).json({ error: 'Missing credentials' });
   if (typeof username !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'Invalid input' });
   if (username.length < 3 || username.length > 50) return res.status(400).json({ error: 'Username length invalid' });
