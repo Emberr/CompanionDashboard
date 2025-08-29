@@ -104,7 +104,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onComplete }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
       <div className="bg-bkg rounded-lg shadow-xl p-8 w-full max-w-md mx-4">
-        <h2 className="text-2xl font-bold text-center mb-2">Welcome to AuraFit AI</h2>
+        <h2 className="text-2xl font-bold text-center mb-2">Welcome to IgnisHealth</h2>
         <p className="text-center text-on-surface-muted mb-6">Let's personalize your experience.</p>
 
         {step === 1 && (

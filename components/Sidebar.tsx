@@ -95,7 +95,7 @@ const DataManager: React.FC<{
         )}`;
         const link = document.createElement("a");
         link.href = jsonString;
-        link.download = `AuraFit-AI-Backup-${new Date().toISOString().split('T')[0]}.json`;
+        link.download = `IgnisHealth-Backup-${new Date().toISOString().split('T')[0]}.json`;
         link.click();
         setIsOpen(false);
     };
@@ -239,7 +239,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, userData, setUs
     <div className="bg-surface p-2 md:p-4 h-full flex flex-col">
       <div className="flex items-center space-x-2 p-3 mb-4">
         <div className="w-8 h-8 rounded-full" style={{ background: gradient }}></div>
-        <h1 className="text-xl font-bold hidden md:block text-on-surface">AuraFit AI</h1>
+        <h1 className="text-xl font-bold hidden md:block text-on-surface">IgnisHealth</h1>
       </div>
       <nav className="flex-grow space-y-2">
         <NavItem label="Dashboard" icon={<HomeIcon />} page="dashboard" currentPage={currentPage} setPage={setPage} />
