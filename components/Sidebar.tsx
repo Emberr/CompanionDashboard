@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import type { Page, UserData } from '../types';
+import { putData as apiPutData, logout as apiLogout } from '../services/api';
 
 interface IconProps {
   className?: string;
@@ -67,10 +68,12 @@ const NavItem: React.FC<{
 
 const DataManager: React.FC<{
     userData: UserData;
-    setUserData: React.Dispatch<React.SetStateAction<UserData>>
-}> = ({ userData, setUserData }) => {
+    setUserData: React.Dispatch<React.SetStateAction<UserData>>;
+    onLogout: () => void;
+}> = ({ userData, setUserData, onLogout }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
     const importRef = useRef<HTMLInputElement>(null);
 
     const handleSaveNow = () => {
@@ -95,6 +98,23 @@ const DataManager: React.FC<{
         link.download = `AuraFit-AI-Backup-${new Date().toISOString().split('T')[0]}.json`;
         link.click();
         setIsOpen(false);
+    };
+
+    const handleSyncNow = async () => {
+        setSyncStatus('syncing');
+        try {
+            const ok = await apiPutData<UserData>(userData);
+            setSyncStatus(ok ? 'synced' : 'error');
+        } catch {
+            setSyncStatus('error');
+        } finally {
+            setTimeout(() => setSyncStatus('idle'), 2000);
+        }
+    };
+
+    const handleLogout = async () => {
+        try { await apiLogout(); } catch {}
+        onLogout();
     };
 
     const handleImportClick = () => {
@@ -140,8 +160,20 @@ const DataManager: React.FC<{
                             {saveStatus === 'saving' && <span className="text-xs text-primary">Saving...</span>}
                             {saveStatus === 'saved' && <span className="text-xs text-secondary">✓ Saved</span>}
                         </button>
+                        <button 
+                            onClick={handleSyncNow}
+                            disabled={syncStatus === 'syncing'}
+                            className="w-full text-left text-sm p-2 rounded hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+                        >
+                            <span>Sync Now</span>
+                            {syncStatus === 'syncing' && <span className="text-xs text-primary">Syncing...</span>}
+                            {syncStatus === 'synced' && <span className="text-xs text-secondary">✓ Synced</span>}
+                            {syncStatus === 'error' && <span className="text-xs text-red-500">! Error</span>}
+                        </button>
                         <button onClick={handleImportClick} className="w-full text-left text-sm p-2 rounded hover:bg-surface">Import Data</button>
                         <button onClick={handleExport} className="w-full text-left text-sm p-2 rounded hover:bg-surface">Export Data</button>
+                        <div className="border-t border-surface mt-1 pt-1" />
+                        <button onClick={handleLogout} className="w-full text-left text-sm p-2 rounded hover:bg-surface text-red-500">Logout</button>
                         <input type="file" accept=".json" ref={importRef} onChange={handleImport} className="hidden" />
                     </div>
                 </div>
@@ -162,9 +194,10 @@ interface SidebarProps {
   setPage: (page: Page) => void;
   userData: UserData;
   setUserData: React.Dispatch<React.SetStateAction<UserData>>;
+  onLogout: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, userData, setUserData }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, userData, setUserData, onLogout }) => {
   const today = new Date().toISOString().split('T')[0];
   const todaysLog = userData.mealLogs.find(log => log.date === today);
 
@@ -215,7 +248,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, userData, setUs
         <NavItem label="Workouts" icon={<DumbbellIcon />} page="workouts" currentPage={currentPage} setPage={setPage} />
       </nav>
       <div className="mt-auto">
-         <DataManager userData={userData} setUserData={setUserData} />
+         <DataManager userData={userData} setUserData={setUserData} onLogout={onLogout} />
       </div>
     </div>
   );

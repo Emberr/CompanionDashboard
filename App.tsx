@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import type { UserData, Page, MealType, MealLogItem } from './types';
 import Sidebar from './components/Sidebar';
@@ -7,6 +7,8 @@ import Inventory from './components/Inventory';
 import Recipes from './components/Recipes';
 import Workouts from './components/Workouts';
 import ProfileSetup from './components/ProfileSetup';
+import Login from './components/Login';
+import { getData as apiGetData, putData as apiPutData } from './services/api';
 
 // Utility function to validate and repair userData structure
 const validateUserData = (data: any): UserData => {
@@ -84,6 +86,8 @@ const validateUserData = (data: any): UserData => {
 
 const App: React.FC = () => {
   const [currentPage, setPage] = useState<Page>('dashboard');
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  const syncTimer = useRef<number | null>(null);
   
   const initialUserData: UserData = {
     isProfileComplete: false,
@@ -122,6 +126,36 @@ const App: React.FC = () => {
     }
      // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
+
+  // Try to fetch server data to determine auth and hydrate
+  useEffect(() => {
+    (async () => {
+      try {
+        const serverData = await apiGetData<UserData>();
+        if (serverData) {
+          setUserData(validateUserData(serverData));
+        }
+        setAuthed(true);
+      } catch (e) {
+        // 401 or network -> not authed or no API
+        setAuthed(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced sync to server when authed
+  useEffect(() => {
+    if (!authed) return;
+    if (syncTimer.current) window.clearTimeout(syncTimer.current);
+    // @ts-ignore - window typing
+    syncTimer.current = window.setTimeout(() => {
+      apiPutData<UserData>(userData).catch(() => {});
+    }, 800);
+    return () => {
+      if (syncTimer.current) window.clearTimeout(syncTimer.current);
+    };
+  }, [userData, authed]);
 
   const handleProfileComplete = (initialData: Partial<UserData>) => {
       setUserData(prev => ({
@@ -162,6 +196,16 @@ const App: React.FC = () => {
     }
   };
 
+  if (authed === false) {
+    return <Login onSuccess={async () => {
+      try {
+        const serverData = await apiGetData<UserData>();
+        if (serverData) setUserData(validateUserData(serverData));
+      } catch {}
+      setAuthed(true);
+    }} />
+  }
+
   if (!userData.isProfileComplete) {
       return <ProfileSetup onComplete={handleProfileComplete} />
   }
@@ -169,7 +213,16 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen w-full bg-bkg text-on-surface">
       <div className="w-16 md:w-64 flex-shrink-0">
-        <Sidebar currentPage={currentPage} setPage={setPage} userData={userData} setUserData={setUserData} />
+        <Sidebar 
+          currentPage={currentPage} 
+          setPage={setPage} 
+          userData={userData} 
+          setUserData={setUserData}
+          onLogout={() => {
+            setAuthed(false);
+            setPage('dashboard');
+          }} 
+        />
       </div>
       <main className="flex-1 overflow-y-auto">
         {renderPage()}
