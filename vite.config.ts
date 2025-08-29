@@ -13,6 +13,14 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      server: {
+        host: true,
+        port: 5173,
+      },
+      preview: {
+        host: true,
+        port: 4173,
+      },
     };
 });
