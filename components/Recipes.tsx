@@ -112,9 +112,14 @@ const Recipes: React.FC<RecipesProps> = ({ userData, setUserData, onAddFood }) =
     setIsLoading(true);
     setError('');
     setGeneratedRecipes([]);
-    const ingredients = useInventory ? userData.inventory.filter(i => i.category === 'food').map(i => i.name) : [];
+    const ingredients = useInventory
+      ? userData.inventory
+          .filter(i => i.category === 'food' || (cheatMode && i.category === 'bar'))
+          .map(i => i.name)
+      : [];
     try {
-      const recipes = await generateRecipes(ingredients, preferences, cheatMode);
+      const utensils = userData.equipment.filter(e => e.category === 'utensil').map(e => e.name);
+      const recipes = await generateRecipes(ingredients, preferences, cheatMode, utensils);
       setGeneratedRecipes(recipes);
     } catch (err) {
       setError('Failed to generate recipes. Please try again.');

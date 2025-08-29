@@ -9,6 +9,7 @@ import Workouts from './components/Workouts';
 import ProfileSetup from './components/ProfileSetup';
 import Login from './components/Login';
 import { getData as apiGetData, putData as apiPutData } from './services/api';
+import BottomNav from './components/BottomNav';
 
 // Utility function to validate and repair userData structure
 const validateUserData = (data: any): UserData => {
@@ -212,7 +213,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-bkg text-on-surface">
-      <div className="w-16 md:w-64 flex-shrink-0">
+      <div className="hidden md:block w-64 flex-shrink-0">
         <Sidebar 
           currentPage={currentPage} 
           setPage={setPage} 
@@ -224,9 +225,19 @@ const App: React.FC = () => {
           }} 
         />
       </div>
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
         {renderPage()}
       </main>
+      <BottomNav
+        currentPage={currentPage}
+        setPage={setPage}
+        userData={userData}
+        setUserData={setUserData}
+        onLogout={() => {
+          setAuthed(false);
+          setPage('dashboard');
+        }}
+      />
     </div>
   );
 };

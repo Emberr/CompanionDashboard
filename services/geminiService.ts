@@ -85,12 +85,15 @@ const parseJsonResponse = <T,>(text: string, fallback: T): T => {
 export const generateRecipes = async (
   ingredients: string[],
   preferences: string,
-  cheatMode: boolean
+  cheatMode: boolean,
+  utensils: string[] = []
 ): Promise<Recipe[]> => {
   const prompt = `
     You are a creative chef and nutritionist.
     Based on the following available ingredients: ${ingredients.join(', ')}.
     The user's preference is: "${preferences}".
+    Available utensils/tools: ${utensils.length > 0 ? utensils.join(', ') : ' '}.
+    Prefer recipes that can be prepared using the listed utensils; avoid requiring tools not provided.
     ${cheatMode ? "The user is in 'cheat mode', so feel free to generate more indulgent or alcoholic drink recipes if applicable." : "Generate healthy, goal-oriented meal recipes."}
     Generate 2 distinct recipes.
     Your response MUST be a valid JSON array matching the provided schema.
@@ -207,8 +210,8 @@ export const getNutrientsForFoodItem = async (itemName: string, quantity: string
     `;
     const client = getAi();
     if (!client) {
-        console.warn("VITE_GEMINI_API_KEY not set; returning empty receipt items.");
-        return [];
+        console.warn("VITE_GEMINI_API_KEY not set; returning null nutrients.");
+        return null;
     }
     const response: GenerateContentResponse = await client.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -264,7 +267,12 @@ ${text}
 """
 `;
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
+    const client = getAi();
+    if (!client) {
+        console.warn("VITE_GEMINI_API_KEY not set; returning empty parsed items.");
+        return [];
+    }
+    const response: GenerateContentResponse = await client.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
