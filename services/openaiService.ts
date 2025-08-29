@@ -1,8 +1,8 @@
 // Simple client-side Whisper transcription using OpenAI API
 // NOTE: Exposes key in client if used in-browser. Prefer a server proxy in production.
 
-// Read Vite-baked env var safely in browser
-const OPENAI_API_KEY: string | undefined = (import.meta as any)?.env?.VITE_OPENAI_API_KEY;
+// Read Vite-baked env var (must be direct access so Vite replaces at build-time)
+const OPENAI_API_KEY: string | undefined = import.meta.env.VITE_OPENAI_API_KEY as string | undefined;
 
 if (!OPENAI_API_KEY) {
   console.warn("OPENAI_API_KEY not set. Voice transcription will be unavailable.")

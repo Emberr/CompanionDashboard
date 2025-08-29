@@ -1,15 +1,14 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import type { Recipe, Workout, Nutrients, MealLogItem } from '../types';
 
-// Read Vite-baked env var safely in browser
-const API_KEY: string | undefined = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+// Read Vite-baked env var (must be direct access so Vite replaces at build-time)
+const API_KEY: string | undefined = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
-if (!API_KEY) {
-  // A simple alert for demonstration. In a real app, this would be handled more gracefully.
-  alert("VITE_GEMINI_API_KEY is not set. App will not function correctly.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
+// Lazily create the client to avoid crashing on app load without a key
+const getAi = () => {
+  if (!API_KEY) return null;
+  return new GoogleGenAI({ apiKey: API_KEY });
+};
 
 const nutrientsSchema = {
     type: Type.OBJECT,
@@ -96,7 +95,12 @@ export const generateRecipes = async (
     Generate 2 distinct recipes.
     Your response MUST be a valid JSON array matching the provided schema.
   `;
-  const response: GenerateContentResponse = await ai.models.generateContent({
+  const client = getAi();
+  if (!client) {
+    console.warn("VITE_GEMINI_API_KEY not set; returning empty recipes.");
+    return [];
+  }
+  const response: GenerateContentResponse = await client.models.generateContent({
     model: 'gemini-2.5-flash',
     contents: prompt,
     config: {
@@ -124,7 +128,12 @@ export const generateWorkout = async (
     Provide a motivating name for the workout and a list of exercises with sets, reps (or time), and brief tips.
     Your response MUST be a valid JSON object matching the provided schema.
   `;
-  const response: GenerateContentResponse = await ai.models.generateContent({
+  const client = getAi();
+  if (!client) {
+    console.warn("VITE_GEMINI_API_KEY not set; returning null workout.");
+    return null;
+  }
+  const response: GenerateContentResponse = await client.models.generateContent({
     model: 'gemini-2.5-flash',
     contents: prompt,
     config: {
@@ -144,7 +153,12 @@ export const generateDashboardInsights = async (userDataJson: string): Promise<s
     `;
 
     try {
-        const response: GenerateContentResponse = await ai.models.generateContent({
+        const client = getAi();
+        if (!client) {
+            console.warn("VITE_GEMINI_API_KEY not set; returning fallback insight message.");
+            return "Gemini API key not set. Add VITE_GEMINI_API_KEY and rebuild.";
+        }
+        const response: GenerateContentResponse = await client.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
         });
@@ -161,7 +175,12 @@ export const getNutrientsForMeal = async (mealDescription: string): Promise<Meal
       Estimate the nutritional information (calories, protein, carbs, fat, fiber, sodium) for the following meal: "${mealDescription}".
       Your response MUST be a valid JSON object with a 'name' (a short, descriptive name for the meal) and a 'nutrients' object matching the schema.
     `;
-    const response: GenerateContentResponse = await ai.models.generateContent({
+    const client = getAi();
+    if (!client) {
+        console.warn("VITE_GEMINI_API_KEY not set; returning null meal nutrients.");
+        return null;
+    }
+    const response: GenerateContentResponse = await client.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
@@ -186,7 +205,12 @@ export const getNutrientsForFoodItem = async (itemName: string, quantity: string
       Estimate the nutritional information (calories, protein, carbs, fat, fiber, sodium) for the following food item: "${quantity} of ${itemName}".
       Your response MUST be a valid JSON object matching the schema.
     `;
-    const response: GenerateContentResponse = await ai.models.generateContent({
+    const client = getAi();
+    if (!client) {
+        console.warn("VITE_GEMINI_API_KEY not set; returning empty receipt items.");
+        return [];
+    }
+    const response: GenerateContentResponse = await client.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
@@ -207,7 +231,12 @@ export const parseReceipt = async (base64Image: string): Promise<{name: string, 
     const textPart = {
         text: "You are an expert receipt OCR system. Extract the food items from this grocery receipt. Ignore taxes, totals, and non-food items. Provide the output as a JSON array of objects, where each object has 'name' and 'quantity' keys. Infer quantity if possible, otherwise default to '1 unit'."
     };
-    const response: GenerateContentResponse = await ai.models.generateContent({
+    const client = getAi();
+    if (!client) {
+        console.warn("VITE_GEMINI_API_KEY not set; returning empty parsed items.");
+        return [];
+    }
+    const response: GenerateContentResponse = await client.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: { parts: [imagePart, textPart] },
         config: {
@@ -291,7 +320,12 @@ Your response MUST be a valid JSON array matching the provided schema.
         }
     };
 
-    const response = await ai.models.generateContent({
+    const client = getAi();
+    if (!client) {
+        console.warn("VITE_GEMINI_API_KEY not set; returning empty macros for items.");
+        return [];
+    }
+    const response = await client.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
