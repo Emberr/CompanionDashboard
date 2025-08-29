@@ -1,0 +1,8 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    container_name: companion-dashboard
+    ports:
+      - "5050:8080" # host:container
+    restart: unless-stopped

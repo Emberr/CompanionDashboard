@@ -1,11 +1,12 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import type { Recipe, Workout, Nutrients, MealLogItem } from '../types';
 
-const API_KEY = (import.meta as any)?.env?.API_KEY || (import.meta as any)?.env?.GEMINI_API_KEY || (import.meta as any)?.env?.VITE_GEMINI_API_KEY || (process as any)?.env?.API_KEY || (process as any)?.env?.GEMINI_API_KEY || (process as any)?.env?.VITE_GEMINI_API_KEY;
+// Read Vite-baked env var safely in browser
+const API_KEY: string | undefined = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
   // A simple alert for demonstration. In a real app, this would be handled more gracefully.
-  alert("API_KEY environment variable not set. App will not function correctly.");
+  alert("VITE_GEMINI_API_KEY is not set. App will not function correctly.");
 }
 
 const ai = new GoogleGenAI({ apiKey: API_KEY! });

@@ -1,26 +1,24 @@
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
-    return {
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.OPENAI_API_KEY': JSON.stringify(env.OPENAI_API_KEY),
-      },
-      resolve: {
-        alias: {
-          '@': path.resolve(__dirname, '.'),
-        }
-      },
-      server: {
-        host: true,
-        port: 5173,
-      },
-      preview: {
-        host: true,
-        port: 4173,
-      },
-    };
-});
+export default defineConfig(() => ({
+  define: {
+    // Prevent "process is not defined" for libraries that check envs
+    'process.env': {},
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, '.'),
+      // Allow imports of 'process' in browser contexts
+      process: 'process/browser',
+    }
+  },
+  server: {
+    host: true,
+    port: 5173,
+  },
+  preview: {
+    host: true,
+    port: 4173,
+  },
+}));
