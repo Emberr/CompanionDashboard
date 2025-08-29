@@ -86,7 +86,7 @@ app.post('/api/auth/login', async (req, res) => {
   const ok = await bcrypt.compare(password, creds.passwordHash);
   if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-  const token = signToken({ sub: AUTH_USERNAME });
+  const token = signToken({ sub: creds.username });
   res.cookie('token', token, {
     httpOnly: true,
     sameSite: 'lax',

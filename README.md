@@ -32,39 +32,31 @@ View your app in AI Studio: https://ai.studio/apps/drive/14maljXb_8WHJc8H4Jp2Hd7
    ```
 3. Visit <http://localhost:8080> in your browser.
 
-## Easy Updates
+## Deploy (Compose-first)
 
-Two simple flows. Both assume your `.env.local` contains:
-- `VITE_GEMINI_API_KEY`
-- `VITE_OPENAI_API_KEY`
+Do this once:
+- Create `.env.local` in repo root with:
+  - `VITE_GEMINI_API_KEY=...`
+  - `VITE_OPENAI_API_KEY=...` (optional; voice transcription)
 
-### A) One-liner (prod-style, unique image per commit)
+- Generate auth `.env` for the API (username/password + JWT secret):
+  ```bash
+  ./scripts/setup-auth.sh admin 'your-password'
+  ```
 
-Build with a unique git-based tag, replace the container, expose on host port 5050:
-
+Build and run both services:
 ```bash
-./scripts/deploy.sh        # auto-uses git SHA as the tag
-# or specify a custom tag
-./scripts/deploy.sh v1
-```
-
-This keeps 5050 stable (good for Cloudflare Tunnel) while images are uniquely tagged per update.
-
-### B) Compose flow (simple and repeatable)
-
-Use the provided `docker-compose.yml` to build and (re)start:
-
-```bash
-docker compose up -d --build
+./scripts/deploy.sh        # now uses docker compose by default
 # or
 ./scripts/compose-update.sh
 ```
 
-This serves on <http://localhost:5050> by default (host 5050 -> container 8080).
+Visit <http://localhost:5050>.
 
 Notes:
-- Vite injects `VITE_*` envs at build time. Ensure `.env.local` is present before building.
-- For subpath hosting, set `base` in `vite.config.ts` (e.g., `base: '/companion/'`).
+- Vite injects `VITE_*` envs at build time. Edit `.env.local` and rerun the deploy.
+- Cookies are httpOnly + SameSite=Lax. Set `COOKIE_SECURE=true` in `.env` if serving over HTTPS.
+- If you only want the static app without login/sync: `./scripts/deploy.sh --frontend-only`
 
 ## Account + Server Sync (optional but recommended)
 
@@ -77,26 +69,9 @@ What you get
 - Nginx proxies `/api/*` to the API container
 
 Configure
-1) Generate a bcrypt hash for your password:
-   ```bash
-   docker run --rm -it -v "$(pwd)/server":/app -w /app node:20-alpine sh -lc "npm i && npm run hash -- 'your-password'"
-   # copy the printed hash
-   ```
-2) Set envs for the API (Compose reads these):
-   - `AUTH_USERNAME` (default: `admin`)
-   - `AUTH_PASSWORD_HASH` (paste the bcrypt hash)
-   - `JWT_SECRET` (any long random string)
-
-   You can export them in your shell or create a `.env` file next to `docker-compose.yml`:
-   ```env
-   AUTH_USERNAME=admin
-   AUTH_PASSWORD_HASH=$2a$10$...yourbcrypthash...
-   JWT_SECRET=change-me
-   ```
-3) Build and run with Compose:
-   ```bash
-   docker compose up -d --build
-   ```
+1) Fast path: run `./scripts/setup-auth.sh <user> <password>` to generate `.env` with bcrypt hash and JWT secret.
+   - Manual path: generate hash and write `.env` yourself (examples in script output).
+2) Build and run with Compose: `docker compose up -d --build`
 
 How it works in the app
 - On load, the app requests `/api/data`. If unauthorized, it shows the login screen.
